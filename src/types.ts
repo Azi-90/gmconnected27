@@ -46,6 +46,7 @@ export interface Player {
   status: ContractStatus
   overall: number | null
   retirementAnnouncedSeason: string | null
+  onTradeBlock: boolean
 }
 
 export type ProspectPotential =

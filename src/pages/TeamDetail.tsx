@@ -293,6 +293,11 @@ function RosterTab({ roster }: { roster: Player[] }) {
                     >
                       <td className="px-3 py-1.5 font-semibold text-white">
                         {p.name}
+                        {p.onTradeBlock && (
+                          <span className="ml-1.5 rounded border border-sky-500/30 bg-sky-500/15 px-1 py-0.5 text-[10px] font-bold uppercase text-sky-300">
+                            On Block
+                          </span>
+                        )}
                         {p.retirementAnnouncedSeason && (
                           <span className="ml-1.5 rounded border border-amber-500/30 bg-amber-500/15 px-1 py-0.5 text-[10px] font-bold uppercase text-amber-300">
                             Retiring
@@ -430,6 +435,11 @@ function CapSheetTab({
   const myClaim = user ? [...claims.values()].find((c) => c.userId === user.id) : undefined
   const canManage = isCommissioner || myClaim?.teamId === teamId
 
+  const toggleTradeBlock = async (playerId: string, next: boolean) => {
+    await supabase.rpc('set_trade_block', { p_player_id: playerId, p_on_block: next })
+    await refresh()
+  }
+
   const currentStart = seasonStartYear(season)
   const maxExpiryStart = roster.reduce((max, p) => Math.max(max, seasonStartYear(p.expiryYear)), currentStart)
   const seasons: number[] = []
@@ -473,6 +483,11 @@ function CapSheetTab({
                 >
                   <td className="sticky left-0 z-10 bg-[var(--bg-panel)] px-3 py-1.5 font-semibold text-white">
                     {p.name} <span className="text-[var(--text-muted)]">{p.position}</span>
+                    {p.onTradeBlock && (
+                      <span className="ml-1.5 rounded border border-sky-500/30 bg-sky-500/15 px-1 py-0.5 text-[10px] font-bold uppercase text-sky-300">
+                        On Block
+                      </span>
+                    )}
                     {p.retirementAnnouncedSeason && (
                       <span className="ml-1.5 rounded border border-amber-500/30 bg-amber-500/15 px-1 py-0.5 text-[10px] font-bold uppercase text-amber-300">
                         Retiring
@@ -499,13 +514,16 @@ function CapSheetTab({
                   })}
                   {canManage && (
                     <td className="px-3 py-1.5 text-right">
-                      {p.retirementAnnouncedSeason ? (
-                        <span className="text-[11px] text-[var(--text-muted)]">—</span>
-                      ) : (
-                        <Button variant="secondary" onClick={() => setResigning(resigning === p.id ? null : p.id)}>
-                          Re-sign
+                      <div className="flex justify-end gap-2">
+                        <Button variant="secondary" onClick={() => toggleTradeBlock(p.id, !p.onTradeBlock)}>
+                          {p.onTradeBlock ? 'Remove from Block' : 'Add to Block'}
                         </Button>
-                      )}
+                        {!p.retirementAnnouncedSeason && (
+                          <Button variant="secondary" onClick={() => setResigning(resigning === p.id ? null : p.id)}>
+                            Re-sign
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>

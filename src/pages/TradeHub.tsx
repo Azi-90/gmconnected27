@@ -335,6 +335,57 @@ function DeadlineBanner({ tradeDeadline }: { tradeDeadline: string | null }) {
   )
 }
 
+function TradeBlockSection() {
+  const { players, teamsById } = useLeagueData()
+  const [open, setOpen] = useState(true)
+
+  const blocked = players.filter((p) => p.onTradeBlock)
+  const byTeam = new Map<string, typeof blocked>()
+  for (const p of blocked) {
+    const list = byTeam.get(p.teamId) ?? []
+    list.push(p)
+    byTeam.set(p.teamId, list)
+  }
+
+  if (blocked.length === 0) return null
+
+  return (
+    <Card className="p-4">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between text-left text-[13px] font-extrabold uppercase tracking-wide text-white"
+      >
+        <span>Trade Block — {blocked.length} player{blocked.length > 1 ? 's' : ''} available</span>
+        <span className="text-[var(--text-muted)]">{open ? '−' : '+'}</span>
+      </button>
+      {open && (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[...byTeam.entries()].map(([teamId, teamPlayers]) => {
+            const team = teamsById.get(teamId)
+            if (!team) return null
+            return (
+              <div key={teamId} className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-3">
+                <div className="flex items-center gap-2">
+                  <TeamBadge team={team} size={20} />
+                  <span className="text-[12px] font-bold text-white">{team.abbr}</span>
+                </div>
+                <div className="mt-2 space-y-1">
+                  {teamPlayers.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between text-[12px]">
+                      <span className="text-white">{p.name}</span>
+                      <span className="text-[var(--text-muted)]">{p.position}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Card>
+  )
+}
+
 export default function TradeHub() {
   const { loading: leagueLoading, teamsById, tradeDeadline } = useLeagueData()
   const { user, profile } = useAuth()
@@ -403,6 +454,8 @@ export default function TradeHub() {
       />
 
       <DeadlineBanner tradeDeadline={tradeDeadline} />
+
+      <TradeBlockSection />
 
       {!canPropose && !deadlinePassed && (
         <Card className="px-4 py-3 text-[13px] text-[var(--text-muted)]">

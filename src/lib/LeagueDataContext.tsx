@@ -67,6 +67,7 @@ function mapPlayerRow(row: any): Player {
     status: row.status,
     overall: row.overall,
     retirementAnnouncedSeason: row.retirement_announced_season,
+    onTradeBlock: row.on_trade_block ?? false,
   }
 }
 
