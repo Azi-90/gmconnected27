@@ -5,11 +5,18 @@ import { useTeamClaims } from '../lib/useTeamClaims'
 import { useTrades } from '../lib/useTrades'
 import { triggerNewsGeneration } from '../lib/newsTrigger'
 import { supabase } from '../lib/supabase'
+import { formatMoney } from '../lib/format'
 import type { Trade, TradeAsset, DraftPick } from '../types'
 import { Card, PageHeader, TeamBadge, Button } from '../components/ui'
 
 function assetLabel(asset: TradeAsset): string {
   return asset.type === 'pick' ? asset.label : asset.playerName
+}
+
+function playerAge(born: string): number | null {
+  const match = born.match(/\d{4}/)
+  if (!match) return null
+  return new Date().getFullYear() - parseInt(match[0], 10)
 }
 
 function mapPickRow(row: any): DraftPick {
@@ -35,6 +42,11 @@ function AssetPicker({
   const { playersByTeam, teamsById } = useLeagueData()
   const roster = playersByTeam(teamId)
   const [picks, setPicks] = useState<DraftPick[]>([])
+  const [search, setSearch] = useState('')
+
+  const filteredRoster = roster
+    .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => b.capHit - a.capHit)
 
   useEffect(() => {
     let active = true
@@ -60,27 +72,62 @@ function AssetPicker({
   }
 
   return (
-    <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--bg)] p-2">
-      {roster.map((p) => {
-        const checked = selected.some((a) => a.type === 'player' && a.playerId === p.id)
-        return (
-          <label key={p.id} className="flex items-center gap-2 rounded px-1.5 py-1 text-[13px] hover:bg-[var(--bg-panel-alt)]">
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  onChange([...selected, { type: 'player', playerId: p.id, playerName: p.name }])
-                } else {
-                  onChange(selected.filter((a) => !(a.type === 'player' && a.playerId === p.id)))
-                }
-              }}
-            />
-            <span className="text-white">{p.name}</span>
-            <span className="text-[var(--text-muted)]">{p.position}</span>
-          </label>
-        )
-      })}
+    <div className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-2">
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search roster..."
+        className="mb-2 w-full rounded border border-[var(--border)] bg-[var(--bg-panel)] px-2 py-1 text-[12px] text-white placeholder:text-[var(--text-muted)]"
+      />
+      <div className="max-h-52 space-y-1 overflow-y-auto">
+        {filteredRoster.map((p) => {
+          const checked = selected.some((a) => a.type === 'player' && a.playerId === p.id)
+          const age = playerAge(p.born)
+          return (
+            <label
+              key={p.id}
+              className="flex items-start gap-2 rounded px-1.5 py-1.5 text-[13px] hover:bg-[var(--bg-panel-alt)]"
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                className="mt-0.5"
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    onChange([...selected, { type: 'player', playerId: p.id, playerName: p.name }])
+                  } else {
+                    onChange(selected.filter((a) => !(a.type === 'player' && a.playerId === p.id)))
+                  }
+                }}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate font-semibold text-white">
+                    {p.name}
+                    {p.onTradeBlock && (
+                      <span className="ml-1.5 rounded border border-sky-500/30 bg-sky-500/15 px-1 py-0.5 text-[9px] font-bold uppercase text-sky-300">
+                        Block
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{p.position}</span>
+                </div>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-[var(--text-muted)]">
+                  <span>Age {age ?? '—'}</span>
+                  <span>·</span>
+                  <span>OVR {p.overall ?? '—'}</span>
+                  <span>·</span>
+                  <span className="font-semibold text-white">{formatMoney(p.capHit)}</span>
+                  <span>· {p.termYears}yr</span>
+                </div>
+              </div>
+            </label>
+          )
+        })}
+        {filteredRoster.length === 0 && (
+          <p className="px-1.5 py-2 text-[12px] text-[var(--text-muted)]">No players match.</p>
+        )}
+      </div>
       {picks.length > 0 && (
         <>
           <div className="mt-1 border-t border-[var(--border)] pt-1 text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
