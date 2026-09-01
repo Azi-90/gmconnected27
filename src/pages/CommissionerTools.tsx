@@ -257,6 +257,108 @@ interface GmRow {
   teamId: string | null
 }
 
+// The recurring "couldn't find my club" bug is always the same root cause: gm_name
+// was hand-typed from reading a Discord nickname off screen, and lookalike
+// characters (0 vs O, 1 vs l, etc.) make that error-prone. This assigns gm_name
+// directly from each signed-in user's exact stored Discord identity instead.
+function TeamGmAssignmentsCard() {
+  const { teams, refresh } = useLeagueData()
+  const [profiles, setProfiles] = useState<{ id: string; identity: string }[]>([])
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState<string | null>(null)
+  const [savedTeam, setSavedTeam] = useState<string | null>(null)
+
+  const loadProfiles = async () => {
+    const { data } = await supabase.from('profiles').select('id, discord_username, guild_nickname')
+    setProfiles(
+      (data ?? [])
+        .map((p) => ({ id: p.id, identity: p.guild_nickname ?? p.discord_username ?? '' }))
+        .filter((p) => p.identity),
+    )
+  }
+
+  useEffect(() => {
+    loadProfiles()
+  }, [])
+
+  const draftFor = (teamId: string, currentGmName: string | null) => drafts[teamId] ?? currentGmName ?? ''
+
+  const save = async (teamId: string) => {
+    const value = draftFor(teamId, null).trim()
+    if (!value) return
+    setSaving(teamId)
+    const { error } = await supabase.rpc('set_team_gm_name', { p_team_id: teamId, p_gm_name: value })
+    setSaving(null)
+    if (error) {
+      alert(error.message)
+      return
+    }
+    setSavedTeam(teamId)
+    await refresh()
+    setTimeout(() => setSavedTeam((t) => (t === teamId ? null : t)), 2000)
+  }
+
+  const sorted = [...teams].sort((a, b) => a.id.localeCompare(b.id))
+
+  return (
+    <Card className="overflow-x-auto">
+      <p className="mb-3 text-[13px] text-[var(--text-muted)]">
+        Pick each team's GM from the exact Discord identity we have on file for a signed-in user —
+        no retyping, so no risk of mixing up a 0 for an O or similar. A GM who hasn't signed in yet
+        won't appear in the dropdown; type their exact identity into the box instead.
+      </p>
+      <table className="w-full text-left text-[13px]">
+        <thead>
+          <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-wide text-[var(--text-muted)]">
+            <th className="px-3 py-2.5">Team</th>
+            <th className="px-3 py-2.5">Current GM Name</th>
+            <th className="px-3 py-2.5">Assign From Signed-In GMs</th>
+            <th className="px-3 py-2.5" />
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((team) => (
+            <tr key={team.id} className="border-b border-[var(--border)]/60 last:border-0">
+              <td className="px-3 py-2 font-semibold text-white">
+                {team.id} — {team.city} {team.name}
+              </td>
+              <td className="px-3 py-2 text-[var(--text-muted)]">{team.gmName ?? '—'}</td>
+              <td className="px-3 py-2">
+                <div className="flex gap-2">
+                  <select
+                    className="rounded border border-[var(--border)] bg-transparent px-2 py-1 text-[13px]"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) setDrafts((d) => ({ ...d, [team.id]: e.target.value }))
+                    }}
+                  >
+                    <option value="">Pick a signed-in GM…</option>
+                    {profiles.map((p) => (
+                      <option key={p.id} value={p.identity}>
+                        {p.identity}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="w-40 rounded border border-[var(--border)] bg-transparent px-2 py-1 text-[13px]"
+                    value={draftFor(team.id, team.gmName)}
+                    onChange={(e) => setDrafts((d) => ({ ...d, [team.id]: e.target.value }))}
+                  />
+                </div>
+              </td>
+              <td className="px-3 py-2 text-right">
+                <Button variant="secondary" onClick={() => save(team.id)} disabled={saving === team.id}>
+                  {saving === team.id ? 'Saving…' : savedTeam === team.id ? 'Saved' : 'Save'}
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Card>
+  )
+}
+
 function ManageCommissioners() {
   const [rows, setRows] = useState<GmRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -559,6 +661,13 @@ export default function CommissionerTools() {
       <TradeDeadlineCard />
 
       <SeedTeamProspectsCard />
+
+      <div>
+        <h2 className="mb-3 text-sm font-extrabold uppercase tracking-wide text-white">
+          Team GM Assignments
+        </h2>
+        <TeamGmAssignmentsCard />
+      </div>
 
       <div>
         <h2 className="mb-3 text-sm font-extrabold uppercase tracking-wide text-white">
