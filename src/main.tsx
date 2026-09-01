@@ -13,6 +13,7 @@ import TradeHub from './pages/TradeHub'
 import FreeAgency from './pages/FreeAgency'
 import Scouting from './pages/Scouting'
 import News from './pages/News'
+import Guide from './pages/Guide'
 import CommissionerTools from './pages/CommissionerTools'
 
 createRoot(document.getElementById('root')!).render(
@@ -31,6 +32,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/free-agency" element={<FreeAgency />} />
               <Route path="/scouting" element={<Scouting />} />
               <Route path="/news" element={<News />} />
+              <Route path="/guide" element={<Guide />} />
               <Route path="/commissioner" element={<CommissionerTools />} />
             </Route>
           </Routes>

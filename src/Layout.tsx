@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { to: '/free-agency', label: 'Free Agency' },
   { to: '/scouting', label: 'Draft Central' },
   { to: '/news', label: 'News' },
+  { to: '/guide', label: 'Guide' },
 ]
 
 function AuthButton() {
