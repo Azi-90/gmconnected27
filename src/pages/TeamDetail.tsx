@@ -187,6 +187,7 @@ export default function TeamDetail() {
           roster={roster}
           season={season}
           salaryCap={salaryCap}
+          capUsed={team.capUsed}
           teamId={team.id}
           teamAbbr={team.abbr}
           refresh={refresh}
@@ -416,6 +417,7 @@ function CapSheetTab({
   roster,
   season,
   salaryCap,
+  capUsed,
   teamId,
   teamAbbr,
   refresh,
@@ -423,6 +425,7 @@ function CapSheetTab({
   roster: Player[]
   season: string
   salaryCap: number
+  capUsed: number
   teamId: string
   teamAbbr: string
   refresh: () => Promise<void>
@@ -430,13 +433,29 @@ function CapSheetTab({
   const { user, profile } = useAuth()
   const { claims } = useTeamClaims()
   const [resigning, setResigning] = useState<string | null>(null)
+  const [dropping, setDropping] = useState<string | null>(null)
 
   const isCommissioner = Boolean(profile?.is_commissioner)
   const myClaim = user ? [...claims.values()].find((c) => c.userId === user.id) : undefined
   const canManage = isCommissioner || myClaim?.teamId === teamId
+  const overCap = capUsed > salaryCap
 
   const toggleTradeBlock = async (playerId: string, next: boolean) => {
     await supabase.rpc('set_trade_block', { p_player_id: playerId, p_on_block: next })
+    await refresh()
+  }
+
+  const dropPlayer = async (player: Player) => {
+    if (!window.confirm(`Drop ${player.name} to free agency? This removes them from your roster right away.`)) {
+      return
+    }
+    setDropping(player.id)
+    const { error } = await supabase.rpc('drop_player', { p_player_id: player.id })
+    setDropping(null)
+    if (error) {
+      alert(error.message)
+      return
+    }
     await refresh()
   }
 
@@ -457,6 +476,14 @@ function CapSheetTab({
 
   return (
     <div className="space-y-4">
+      {canManage && overCap && (
+        <Card className="border-[var(--negative)]/40 bg-[var(--negative)]/10 px-4 py-3">
+          <p className="text-[13px] font-semibold text-[var(--negative)]">
+            Over the salary cap by {formatMoney(capUsed - salaryCap)} — drop a player below to get back under
+            before making other moves.
+          </p>
+        </Card>
+      )}
       <Card className="max-h-[480px] overflow-auto">
         <table className="w-full text-left text-[13px]">
           <thead className="sticky top-0 z-10 bg-[var(--bg-panel)]">
@@ -523,6 +550,9 @@ function CapSheetTab({
                             Re-sign
                           </Button>
                         )}
+                        <Button variant="secondary" onClick={() => dropPlayer(p)} disabled={dropping === p.id}>
+                          {dropping === p.id ? 'Dropping…' : 'Drop'}
+                        </Button>
                       </div>
                     </td>
                   )}

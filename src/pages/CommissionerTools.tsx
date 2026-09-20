@@ -442,6 +442,7 @@ const ACTION_LABELS: Record<string, string> = {
   approve_trade: 'a trade approval',
   award_free_agent: 'a free-agent signing',
   apply_progression: 'a progression run',
+  drop_player: 'a player drop',
 }
 
 function UndoLastActionCard() {
