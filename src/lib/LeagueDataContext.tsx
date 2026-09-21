@@ -91,6 +91,7 @@ function mapFreeAgentRow(row: any): FreeAgent {
     lastCapHit: row.last_cap_hit,
     status: row.status,
     rfaWaived: row.rfa_waived ?? false,
+    overall: row.overall,
   }
 }
 

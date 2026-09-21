@@ -224,6 +224,7 @@ export default function FreeAgency() {
             <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-wide text-[var(--text-muted)]">
               <th className="px-3 py-2.5">Player</th>
               <th className="px-3 py-2.5">Pos</th>
+              <th className="px-3 py-2.5">OVR</th>
               <th className="px-3 py-2.5">Age</th>
               <th className="px-3 py-2.5">Last Team</th>
               <th className="px-3 py-2.5">Last Cap Hit</th>
@@ -245,6 +246,7 @@ export default function FreeAgency() {
                   >
                     <td className="px-3 py-2 font-semibold text-white">{fa.name}</td>
                     <td className="px-3 py-2">{fa.position}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)]">{fa.overall ?? '—'}</td>
                     <td className="px-3 py-2 text-[var(--text-muted)]">{fa.age}</td>
                     <td className="px-3 py-2 text-[var(--text-muted)]">{fa.lastTeam ?? '—'}</td>
                     <td className="px-3 py-2 text-[var(--text-muted)]">
@@ -276,7 +278,7 @@ export default function FreeAgency() {
                   </tr>
                   {openOffer === fa.id && (
                     <tr>
-                      <td colSpan={7} className="bg-[var(--bg-panel-alt)]/40 px-3 py-3">
+                      <td colSpan={8} className="bg-[var(--bg-panel-alt)]/40 px-3 py-3">
                         {fa.status === 'RFA' && !fa.rfaWaived && (
                           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-200">
                             <span>

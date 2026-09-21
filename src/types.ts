@@ -95,6 +95,7 @@ export interface FreeAgent {
   lastCapHit: number
   status: 'UFA' | 'RFA'
   rfaWaived: boolean
+  overall: number | null
 }
 
 export type TradeAsset =
