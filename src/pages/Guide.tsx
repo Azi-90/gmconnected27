@@ -428,6 +428,11 @@ export default function Guide() {
                 between <b className="text-white">80–95%</b> and the player counters with what they'd actually take.
                 Come in under <b className="text-white">80%</b> and the offer is rejected.
               </p>
+              <p className="mt-3 text-[13.5px] text-[var(--text-muted)]">
+                An accepted offer is an <b className="text-white">extension</b>, not a rewrite — it doesn't touch
+                their current deal. It kicks in the season after their existing contract expires, and shows up as an
+                "Ext." badge on the roster and cap sheet in the meantime.
+              </p>
             </Card>
           </section>
 

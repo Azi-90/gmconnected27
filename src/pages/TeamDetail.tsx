@@ -351,7 +351,9 @@ function ResignForm({
   const [aav, setAav] = useState(String(player.capHit))
   const [termYears, setTermYears] = useState('2')
   const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState<{ outcome: string; expectedAav: number } | { error: string } | null>(null)
+  const [result, setResult] = useState<
+    { outcome: string; expectedAav: number; effectiveSeason?: string } | { error: string } | null
+  >(null)
 
   const submit = async () => {
     setSubmitting(true)
@@ -365,7 +367,7 @@ function ResignForm({
       setResult({ error: error.message })
       return
     }
-    setResult(data as { outcome: string; expectedAav: number })
+    setResult(data as { outcome: string; expectedAav: number; effectiveSeason?: string })
     if (data?.outcome === 'accepted') {
       triggerNewsGeneration(
         'free_agency',
@@ -407,7 +409,9 @@ function ResignForm({
         <span className="text-[12px] text-[var(--negative)]">Rejected outright — try free agency later</span>
       )}
       {result && 'outcome' in result && result.outcome === 'accepted' && (
-        <span className="text-[12px] text-[var(--positive)]">Signed!</span>
+        <span className="text-[12px] text-[var(--positive)]">
+          Extension agreed — takes effect {result.effectiveSeason ?? 'next season'}
+        </span>
       )}
     </div>
   )
