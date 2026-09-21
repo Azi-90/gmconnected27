@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from './supabase'
-import type { Team, Player, FreeAgent, Prospect } from '../types'
+import type { Team, Player, FreeAgent, Prospect, PendingExtension } from '../types'
 
 interface LeagueState {
   season: string
@@ -44,7 +44,7 @@ function mapTeamRow(row: any, capUsed: number, playerCount: number, salaryCap: n
   }
 }
 
-function mapPlayerRow(row: any): Player {
+function mapPlayerRow(row: any, extension: PendingExtension | null): Player {
   return {
     id: row.id,
     teamId: row.team_id,
@@ -68,6 +68,16 @@ function mapPlayerRow(row: any): Player {
     overall: row.overall,
     retirementAnnouncedSeason: row.retirement_announced_season,
     onTradeBlock: row.on_trade_block ?? false,
+    pendingExtension: extension,
+  }
+}
+
+function mapPendingExtensionRow(row: any): PendingExtension {
+  return {
+    effectiveSeason: row.effective_season,
+    newCapHit: row.new_cap_hit,
+    newTermYears: row.new_term_years,
+    newExpiryYear: row.new_expiry_year,
   }
 }
 
@@ -121,11 +131,12 @@ export function LeagueDataProvider({ children }: { children: ReactNode }) {
   const [prospects, setProspects] = useState<Prospect[]>([])
 
   const refresh = useCallback(async () => {
-    const [stateRes, teamsRes, playersRes, faRes] = await Promise.all([
+    const [stateRes, teamsRes, playersRes, faRes, extensionsRes] = await Promise.all([
       supabase.from('league_state').select('*').single(),
       supabase.from('league_teams').select('*'),
       supabase.from('players').select('*'),
       supabase.from('free_agents').select('*').is('signed_by_team_id', null),
+      supabase.from('pending_contract_extensions').select('*'),
     ])
 
     const state: LeagueState = stateRes.data
@@ -145,7 +156,12 @@ export function LeagueDataProvider({ children }: { children: ReactNode }) {
       .eq('draft_year', state.draftClassYear)
       .order('rank')
 
-    const playerRows = (playersRes.data ?? []).map(mapPlayerRow)
+    const extensionsByPlayer = new Map(
+      (extensionsRes.data ?? []).map((row: any) => [`${row.team_id}|${row.player_name}`, mapPendingExtensionRow(row)]),
+    )
+    const playerRows = (playersRes.data ?? []).map((row: any) =>
+      mapPlayerRow(row, extensionsByPlayer.get(`${row.team_id}|${row.name}`) ?? null),
+    )
     const teamRows = teamsRes.data ?? []
 
     const mappedTeams = teamRows.map((row: any) => {

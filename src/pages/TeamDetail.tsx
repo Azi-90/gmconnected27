@@ -304,6 +304,14 @@ function RosterTab({ roster }: { roster: Player[] }) {
                             Retiring
                           </span>
                         )}
+                        {p.pendingExtension && (
+                          <span
+                            className="ml-1.5 rounded border border-emerald-500/30 bg-emerald-500/15 px-1 py-0.5 text-[10px] font-bold uppercase text-emerald-300"
+                            title={`Already re-signed: ${formatMoney(p.pendingExtension.newCapHit)}/yr × ${p.pendingExtension.newTermYears}yr, starts ${p.pendingExtension.effectiveSeason}`}
+                          >
+                            Ext. {p.pendingExtension.effectiveSeason}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-1.5 text-[var(--text-muted)]">{p.number}</td>
                       <td className="px-3 py-1.5">{p.position}</td>
@@ -518,6 +526,14 @@ function CapSheetTab({
                     {p.retirementAnnouncedSeason && (
                       <span className="ml-1.5 rounded border border-amber-500/30 bg-amber-500/15 px-1 py-0.5 text-[10px] font-bold uppercase text-amber-300">
                         Retiring
+                      </span>
+                    )}
+                    {p.pendingExtension && (
+                      <span
+                        className="ml-1.5 rounded border border-emerald-500/30 bg-emerald-500/15 px-1 py-0.5 text-[10px] font-bold uppercase text-emerald-300"
+                        title={`Already re-signed: ${formatMoney(p.pendingExtension.newCapHit)}/yr × ${p.pendingExtension.newTermYears}yr, starts ${p.pendingExtension.effectiveSeason}`}
+                      >
+                        Ext. {p.pendingExtension.effectiveSeason}
                       </span>
                     )}
                   </td>

@@ -47,6 +47,14 @@ export interface Player {
   overall: number | null
   retirementAnnouncedSeason: string | null
   onTradeBlock: boolean
+  pendingExtension: PendingExtension | null
+}
+
+export interface PendingExtension {
+  effectiveSeason: string
+  newCapHit: number
+  newTermYears: number
+  newExpiryYear: string
 }
 
 export type ProspectPotential =
