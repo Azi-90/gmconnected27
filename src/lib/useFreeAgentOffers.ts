@@ -17,14 +17,18 @@ function mapOfferRow(row: any): FreeAgentOffer {
 
 export function useFreeAgentOffers() {
   const [offers, setOffers] = useState<FreeAgentOffer[]>([])
+  const [pendingCounts, setPendingCounts] = useState<Map<string, number>>(new Map())
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
-    const { data } = await supabase
-      .from('free_agent_offers')
-      .select('*')
-      .order('created_at', { ascending: false })
-    setOffers((data ?? []).map(mapOfferRow))
+    const [offersRes, countsRes] = await Promise.all([
+      supabase.from('free_agent_offers').select('*').order('created_at', { ascending: false }),
+      supabase.rpc('pending_offer_counts'),
+    ])
+    setOffers((offersRes.data ?? []).map(mapOfferRow))
+    setPendingCounts(
+      new Map((countsRes.data ?? []).map((row: any) => [row.free_agent_id, Number(row.pending_count)])),
+    )
     setLoading(false)
   }, [])
 
@@ -65,5 +69,5 @@ export function useFreeAgentOffers() {
     [refresh],
   )
 
-  return { offers, loading, submitOffer, decideOffer, withdrawOffer }
+  return { offers, pendingCounts, loading, submitOffer, decideOffer, withdrawOffer }
 }

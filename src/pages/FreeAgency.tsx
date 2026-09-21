@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../lib/AuthContext'
 import { useLeagueData } from '../lib/LeagueDataContext'
 import { useTeamClaims } from '../lib/useTeamClaims'
@@ -8,6 +8,27 @@ import { supabase } from '../lib/supabase'
 import type { FreeAgentOffer } from '../types'
 import { Card, PageHeader, Button } from '../components/ui'
 import { formatMoney } from '../lib/format'
+
+function useNextResolutionCountdown() {
+  const [label, setLabel] = useState('')
+
+  useEffect(() => {
+    const update = () => {
+      const now = new Date()
+      const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 5, 0, 0))
+      if (next.getTime() <= now.getTime()) next.setUTCDate(next.getUTCDate() + 1)
+      const ms = next.getTime() - now.getTime()
+      const hours = Math.floor(ms / 3_600_000)
+      const mins = Math.floor((ms % 3_600_000) / 60_000)
+      setLabel(`${hours}h ${mins}m`)
+    }
+    update()
+    const id = setInterval(update, 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  return label
+}
 
 function OfferForm({
   freeAgentName,
@@ -105,9 +126,12 @@ function OfferRow({
 
   const statusStyles: Record<FreeAgentOffer['status'], string> = {
     pending: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    leading: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    outbid: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
     awarded: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
     declined: 'bg-red-500/15 text-red-300 border-red-500/30',
   }
+  const isLive = offer.status === 'pending' || offer.status === 'leading' || offer.status === 'outbid'
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2">
@@ -124,7 +148,7 @@ function OfferRow({
         <span className={`rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusStyles[offer.status]}`}>
           {offer.status}
         </span>
-        {offer.status === 'pending' && isCommissioner && (
+        {offer.status === 'leading' && isCommissioner && (
           <>
             <Button onClick={() => onDecide(offer.id, 'awarded')} disabled={rfaBlocked}>
               Award
@@ -134,7 +158,12 @@ function OfferRow({
             </Button>
           </>
         )}
-        {offer.status === 'pending' && !isCommissioner && isProposer && (
+        {offer.status === 'pending' && isCommissioner && (
+          <Button variant="secondary" onClick={() => onDecide(offer.id, 'declined')}>
+            Decline
+          </Button>
+        )}
+        {isLive && !isCommissioner && isProposer && (
           <Button variant="secondary" onClick={() => onWithdraw(offer.id)}>
             Withdraw
           </Button>
@@ -148,9 +177,10 @@ export default function FreeAgency() {
   const { loading: leagueLoading, freeAgents, season, refresh, teamsById } = useLeagueData()
   const { user, profile } = useAuth()
   const { claims } = useTeamClaims()
-  const { offers, loading: offersLoading, submitOffer, decideOffer, withdrawOffer } = useFreeAgentOffers()
+  const { offers, pendingCounts, loading: offersLoading, submitOffer, decideOffer, withdrawOffer } = useFreeAgentOffers()
   const [openOffer, setOpenOffer] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const nextResolution = useNextResolutionCountdown()
 
   const myTeamId = user ? [...claims.values()].find((c) => c.userId === user.id)?.teamId ?? null : null
   const isCommissioner = Boolean(profile?.is_commissioner)
@@ -174,7 +204,12 @@ export default function FreeAgency() {
     <div className="space-y-4">
       <PageHeader
         title="Free Agency"
-        description={`${season} · ${freeAgents.length} unsigned players · every club may bid, the commissioner awards the deal.`}
+        description={`${season} · ${freeAgents.length} unsigned players · bidding is blind — offers stay hidden until nightly resolution picks the leading bid, then the commissioner awards it.`}
+        actions={
+          <span className="text-[12px] font-semibold text-[var(--text-muted)]">
+            Next resolution in <span className="text-white">{nextResolution || '…'}</span> (12:00 AM EST)
+          </span>
+        }
       />
 
       {actionError && (
@@ -199,7 +234,8 @@ export default function FreeAgency() {
           <tbody>
             {freeAgents.map((fa, i) => {
               const faOffers = offersByFreeAgent.get(fa.id) ?? []
-              const pendingCount = faOffers.filter((o) => o.status === 'pending').length
+              const leadingOffer = faOffers.find((o) => o.status === 'leading')
+              const blindCount = pendingCounts.get(fa.id) ?? 0
               return (
                 <Fragment key={fa.id}>
                   <tr
@@ -230,7 +266,11 @@ export default function FreeAgency() {
                         variant="secondary"
                         onClick={() => setOpenOffer(openOffer === fa.id ? null : fa.id)}
                       >
-                        {pendingCount > 0 ? `${pendingCount} Offer${pendingCount > 1 ? 's' : ''}` : 'Offers'}
+                        {leadingOffer
+                          ? `Leading ${formatMoney(leadingOffer.aav)}`
+                          : blindCount > 0
+                            ? `${blindCount} Blind Bid${blindCount > 1 ? 's' : ''}`
+                            : 'Offers'}
                       </Button>
                     </td>
                   </tr>
@@ -259,6 +299,12 @@ export default function FreeAgency() {
                               </Button>
                             )}
                           </div>
+                        )}
+                        {blindCount > 0 && !leadingOffer && (
+                          <p className="mb-3 text-[12px] text-[var(--text-muted)]">
+                            {blindCount} blind bid{blindCount > 1 ? 's' : ''} in progress — amounts stay hidden until
+                            tonight's resolution at 12:00 AM EST.
+                          </p>
                         )}
                         {faOffers.length > 0 && (
                           <div className="mb-3 space-y-1.5">

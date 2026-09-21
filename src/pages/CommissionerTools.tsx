@@ -570,6 +570,40 @@ function AdvanceSeasonCard() {
   )
 }
 
+function ResolveFreeAgencyCard() {
+  const { refresh } = useLeagueData()
+  const [running, setRunning] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
+
+  const run = async () => {
+    setRunning(true)
+    const { error } = await supabase.rpc('resolve_nightly_free_agency')
+    setRunning(false)
+    if (error) {
+      setResult(`Failed: ${error.message}`)
+      return
+    }
+    setResult('Resolved — leading bids are now ready for Award/Decline on the Free Agency page.')
+    await refresh()
+  }
+
+  return (
+    <Card className="p-5">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Free Agency</p>
+      <h2 className="mt-1 text-xl font-extrabold text-white">Nightly Bid Resolution</h2>
+      <p className="mt-2 text-[13px] text-[var(--text-muted)]">
+        Runs automatically every night at 12:00 AM EST — ranks every free agent's live offers and marks the
+        highest AAV as the leading bid. This button runs the same check on demand, in case you want to resolve
+        early or double-check the automatic job actually ran.
+      </p>
+      <Button className="mt-3" onClick={run} disabled={running}>
+        {running ? 'Resolving…' : 'Resolve Now'}
+      </Button>
+      {result && <p className="mt-3 text-[13px] text-[var(--positive)]">{result}</p>}
+    </Card>
+  )
+}
+
 function TradeDeadlineCard() {
   const { tradeDeadline, refresh } = useLeagueData()
   const [value, setValue] = useState(tradeDeadline ? tradeDeadline.slice(0, 16) : '')
@@ -656,6 +690,8 @@ export default function CommissionerTools() {
       <UndoLastActionCard />
 
       <AdvanceSeasonCard />
+
+      <ResolveFreeAgencyCard />
 
       <PlayerProgressionCard />
 

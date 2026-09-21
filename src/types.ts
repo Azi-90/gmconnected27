@@ -148,6 +148,6 @@ export interface FreeAgentOffer {
   aav: number
   termYears: number
   signingBonus: number
-  status: 'pending' | 'awarded' | 'declined'
+  status: 'pending' | 'leading' | 'outbid' | 'awarded' | 'declined'
   createdAt: string
 }
