@@ -7,7 +7,7 @@ import { triggerNewsGeneration } from '../lib/newsTrigger'
 import { supabase } from '../lib/supabase'
 import type { FreeAgentOffer } from '../types'
 import { Card, PageHeader, Button } from '../components/ui'
-import { formatMoney } from '../lib/format'
+import { formatMoney, NHL_MIN_SALARY, nhlMaxSalary } from '../lib/format'
 
 function useNextResolutionCountdown() {
   const [label, setLabel] = useState('')
@@ -43,14 +43,16 @@ function OfferForm({
   onSubmit: (teamId: string, aav: number, termYears: number) => void
   onCancel: () => void
 }) {
-  const { teams } = useLeagueData()
+  const { teams, salaryCap } = useLeagueData()
   const [teamId, setTeamId] = useState(myTeamId ?? teams[0]?.id ?? '')
   const [aav, setAav] = useState('')
   const [termYears, setTermYears] = useState('1')
 
+  const maxAav = nhlMaxSalary(salaryCap)
   const aavNumber = Number(aav)
   const termNumber = Number(termYears)
-  const canSubmit = teamId && aavNumber > 0 && termNumber >= 1 && termNumber <= 8
+  const canSubmit =
+    teamId && aavNumber >= NHL_MIN_SALARY && aavNumber <= maxAav && termNumber >= 1 && termNumber <= 7
 
   return (
     <Card className="mt-2 space-y-3 p-4">
@@ -77,7 +79,8 @@ function OfferForm({
         )}
         <input
           type="number"
-          min={1}
+          min={NHL_MIN_SALARY}
+          max={maxAav}
           value={aav}
           onChange={(e) => setAav(e.target.value)}
           placeholder="AAV ($)"
@@ -86,13 +89,16 @@ function OfferForm({
         <input
           type="number"
           min={1}
-          max={8}
+          max={7}
           value={termYears}
           onChange={(e) => setTermYears(e.target.value)}
           placeholder="Term (years)"
           className="rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[13px] text-white placeholder:text-[var(--text-muted)]"
         />
       </div>
+      <p className="text-[11px] text-[var(--text-muted)]">
+        NHL rules: {formatMoney(NHL_MIN_SALARY)}–{formatMoney(maxAav)} AAV, up to 7 years for a new-team signing.
+      </p>
       <div className="flex justify-end gap-3">
         <Button variant="secondary" onClick={onCancel}>
           Cancel

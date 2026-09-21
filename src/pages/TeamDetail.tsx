@@ -4,10 +4,9 @@ import { useAuth } from '../lib/AuthContext'
 import { useLeagueData } from '../lib/LeagueDataContext'
 import { useTeamClaims } from '../lib/useTeamClaims'
 import { supabase } from '../lib/supabase'
-import { triggerNewsGeneration } from '../lib/newsTrigger'
 import type { Player, Position, TeamProspect } from '../types'
 import { Card, TeamBadge, CapSpaceText, StatusBadge, Button } from '../components/ui'
-import { formatMoney } from '../lib/format'
+import { formatMoney, NHL_MIN_SALARY, nhlMaxSalary } from '../lib/format'
 
 function mapTeamProspectRow(row: any): TeamProspect {
   return {
@@ -189,7 +188,6 @@ export default function TeamDetail() {
           salaryCap={salaryCap}
           capUsed={team.capUsed}
           teamId={team.id}
-          teamAbbr={team.abbr}
           refresh={refresh}
         />
       )}
@@ -341,11 +339,11 @@ function RosterTab({ roster }: { roster: Player[] }) {
 
 function ResignForm({
   player,
-  teamAbbr,
+  salaryCap,
   onDone,
 }: {
   player: Player
-  teamAbbr: string
+  salaryCap: number
   onDone: () => void
 }) {
   const [aav, setAav] = useState(String(player.capHit))
@@ -354,6 +352,8 @@ function ResignForm({
   const [result, setResult] = useState<
     { outcome: string; expectedAav: number; effectiveSeason?: string } | { error: string } | null
   >(null)
+
+  const maxAav = nhlMaxSalary(salaryCap)
 
   const submit = async () => {
     setSubmitting(true)
@@ -369,11 +369,6 @@ function ResignForm({
     }
     setResult(data as { outcome: string; expectedAav: number; effectiveSeason?: string })
     if (data?.outcome === 'accepted') {
-      triggerNewsGeneration(
-        'free_agency',
-        { team: teamAbbr, playerName: player.name, aav: Number(aav), termYears: Number(termYears) },
-        [player.teamId],
-      )
       onDone()
     }
   }
@@ -382,6 +377,8 @@ function ResignForm({
     <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg)] p-2">
       <input
         type="number"
+        min={NHL_MIN_SALARY}
+        max={maxAav}
         value={aav}
         onChange={(e) => setAav(e.target.value)}
         placeholder="AAV ($)"
@@ -399,6 +396,9 @@ function ResignForm({
       <Button onClick={submit} disabled={submitting}>
         {submitting ? 'Offering…' : 'Offer'}
       </Button>
+      <span className="w-full text-[11px] text-[var(--text-muted)]">
+        NHL rules: {formatMoney(NHL_MIN_SALARY)}–{formatMoney(maxAav)} AAV, up to 8 years.
+      </span>
       {result && 'error' in result && <span className="text-[12px] text-[var(--negative)]">{result.error}</span>}
       {result && 'outcome' in result && result.outcome === 'countered' && (
         <span className="text-[12px] text-amber-300">
@@ -410,7 +410,8 @@ function ResignForm({
       )}
       {result && 'outcome' in result && result.outcome === 'accepted' && (
         <span className="text-[12px] text-[var(--positive)]">
-          Extension agreed — takes effect {result.effectiveSeason ?? 'next season'}
+          Accepted by the player — sent to the commissioner for approval (would take effect{' '}
+          {result.effectiveSeason ?? 'next season'})
         </span>
       )}
     </div>
@@ -431,7 +432,6 @@ function CapSheetTab({
   salaryCap,
   capUsed,
   teamId,
-  teamAbbr,
   refresh,
 }: {
   roster: Player[]
@@ -439,7 +439,6 @@ function CapSheetTab({
   salaryCap: number
   capUsed: number
   teamId: string
-  teamAbbr: string
   refresh: () => Promise<void>
 }) {
   const { user, profile } = useAuth()
@@ -615,7 +614,7 @@ function CapSheetTab({
           <div className="border-t border-[var(--border)] p-3">
             <ResignForm
               player={sorted.find((p) => p.id === resigning)!}
-              teamAbbr={teamAbbr}
+              salaryCap={salaryCap}
               onDone={async () => {
                 await refresh()
                 setResigning(null)

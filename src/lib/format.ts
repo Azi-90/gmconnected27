@@ -1,3 +1,10 @@
+// Real NHL rules: league minimum salary for 2026-27 (per the CBA's scheduled
+// increases), and no player's AAV can exceed 20% of that season's cap.
+export const NHL_MIN_SALARY = 1_000_000
+export function nhlMaxSalary(salaryCap: number): number {
+  return Math.round(salaryCap * 0.2)
+}
+
 export function formatMoney(value: number, opts: { compact?: boolean } = {}): string {
   const sign = value < 0 ? '-' : ''
   const abs = Math.abs(value)

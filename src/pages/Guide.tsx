@@ -433,6 +433,16 @@ export default function Guide() {
                 their current deal. It kicks in the season after their existing contract expires, and shows up as an
                 "Ext." badge on the roster and cap sheet in the meantime.
               </p>
+              <p className="mt-3 text-[13.5px] text-[var(--text-muted)]">
+                The player accepting isn't the final step — every accepted offer still needs the{' '}
+                <b className="text-white">commissioner's approval</b> before it's locked in, same as a trade or a
+                free-agent award. It'll sit under Commissioner Tools until then.
+              </p>
+              <p className="mt-3 text-[13.5px] text-[var(--text-muted)]">
+                AAV has to follow real NHL rules: at least the league minimum ($1,000,000), and no more than{' '}
+                <b className="text-white">20% of the salary cap</b> for that season. Term is capped at 8 years for
+                re-signing your own player, or 7 years for a new-team free-agent signing.
+              </p>
             </Card>
           </section>
 

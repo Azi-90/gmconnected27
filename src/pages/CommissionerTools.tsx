@@ -6,7 +6,109 @@ import { supabase } from '../lib/supabase'
 import { triggerNewsGeneration } from '../lib/newsTrigger'
 import { useTransactionsLog } from '../lib/useTransactionsLog'
 import { Card, PageHeader, Button } from '../components/ui'
+import { formatMoney } from '../lib/format'
 import type { ProgressionLogEntry } from '../types'
+
+interface PendingResign {
+  id: string
+  playerName: string
+  teamId: string
+  offeredAav: number
+  offeredTermYears: number
+  effectiveSeason: string | null
+}
+
+function mapPendingResignRow(row: any): PendingResign {
+  return {
+    id: row.id,
+    playerName: row.player_name,
+    teamId: row.team_id,
+    offeredAav: row.offered_aav,
+    offeredTermYears: row.offered_term_years,
+    effectiveSeason: row.effective_season,
+  }
+}
+
+function PendingResignsCard() {
+  const { teamsById, refresh } = useLeagueData()
+  const [rows, setRows] = useState<PendingResign[]>([])
+  const [deciding, setDeciding] = useState<string | null>(null)
+
+  const refreshRows = async () => {
+    const { data } = await supabase
+      .from('resign_log')
+      .select('*')
+      .eq('commissioner_status', 'pending')
+      .order('created_at', { ascending: false })
+    setRows((data ?? []).map(mapPendingResignRow))
+  }
+
+  useEffect(() => {
+    refreshRows()
+  }, [])
+
+  const decide = async (row: PendingResign, status: 'approved' | 'rejected') => {
+    setDeciding(row.id)
+    const { error } = await supabase.from('resign_log').update({ commissioner_status: status }).eq('id', row.id)
+    setDeciding(null)
+    if (error) {
+      alert(error.message)
+      return
+    }
+    if (status === 'approved') {
+      const team = teamsById.get(row.teamId)
+      triggerNewsGeneration(
+        'free_agency',
+        {
+          team: team ? `${team.city} ${team.name}` : row.teamId,
+          playerName: row.playerName,
+          aav: row.offeredAav,
+          termYears: row.offeredTermYears,
+        },
+        [row.teamId],
+      )
+    }
+    await refreshRows()
+    await refresh()
+  }
+
+  if (rows.length === 0) return null
+
+  return (
+    <Card className="p-5">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Re-Signings</p>
+      <h2 className="mt-1 text-xl font-extrabold text-white">Pending Approval</h2>
+      <p className="mt-2 text-[13px] text-[var(--text-muted)]">
+        Each of these was already accepted by the player — approve to lock in the extension, or reject to send
+        the GM back to the table.
+      </p>
+      <div className="mt-4 space-y-2">
+        {rows.map((row) => (
+          <div
+            key={row.id}
+            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[13px]"
+          >
+            <span>
+              <span className="font-bold text-white">{row.playerName}</span>{' '}
+              <span className="text-[var(--text-muted)]">
+                ({row.teamId}) {formatMoney(row.offeredAav)}/yr × {row.offeredTermYears}yr, effective{' '}
+                {row.effectiveSeason}
+              </span>
+            </span>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => decide(row, 'rejected')} disabled={deciding === row.id}>
+                Reject
+              </Button>
+              <Button onClick={() => decide(row, 'approved')} disabled={deciding === row.id}>
+                {deciding === row.id ? 'Working…' : 'Approve'}
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
 
 const ACTION_TAGS: Record<string, string> = {
   trade: 'Trade',
@@ -762,6 +864,8 @@ export default function CommissionerTools() {
       <PageHeader title="Commissioner Tools" description="Season control and league administration." />
 
       <TransactionAlertsCard />
+
+      <PendingResignsCard />
 
       <UndoLastActionCard />
 
