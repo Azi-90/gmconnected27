@@ -4,8 +4,82 @@ import { useAuth } from '../lib/AuthContext'
 import { useLeagueData } from '../lib/LeagueDataContext'
 import { supabase } from '../lib/supabase'
 import { triggerNewsGeneration } from '../lib/newsTrigger'
+import { useTransactionsLog } from '../lib/useTransactionsLog'
 import { Card, PageHeader, Button } from '../components/ui'
 import type { ProgressionLogEntry } from '../types'
+
+const ACTION_TAGS: Record<string, string> = {
+  trade: 'Trade',
+  free_agent_award: 'Free Agency',
+  re_sign: 'Re-Sign',
+  drop_player: 'Drop',
+}
+
+function TransactionAlertsCard() {
+  const { entries, unreadCount, acknowledgeAll } = useTransactionsLog()
+  const [acknowledging, setAcknowledging] = useState(false)
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Alerts</p>
+          <h2 className="mt-1 text-xl font-extrabold text-white">
+            Transaction Log
+            {unreadCount > 0 && (
+              <span className="ml-2 rounded-full bg-[var(--negative)] px-2 py-0.5 text-[11px] font-bold text-white">
+                {unreadCount} new
+              </span>
+            )}
+          </h2>
+        </div>
+        {unreadCount > 0 && (
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              setAcknowledging(true)
+              await acknowledgeAll()
+              setAcknowledging(false)
+            }}
+            disabled={acknowledging}
+          >
+            {acknowledging ? 'Marking…' : 'Mark All Read'}
+          </Button>
+        )}
+      </div>
+      <p className="mt-2 text-[13px] text-[var(--text-muted)]">
+        Every trade that clears final approval, free-agent award, accepted re-signing, and player drop lands here
+        as it happens.
+      </p>
+      {entries.length === 0 ? (
+        <p className="mt-4 text-[13px] text-[var(--text-muted)]">No transactions yet.</p>
+      ) : (
+        <div className="mt-4 max-h-[360px] space-y-1.5 overflow-auto">
+          {entries.map((entry) => (
+            <div
+              key={entry.id}
+              className={`flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-[13px] ${
+                entry.acknowledged
+                  ? 'border-[var(--border)] bg-[var(--bg)]'
+                  : 'border-[var(--accent)]/40 bg-[var(--accent-soft)]'
+              }`}
+            >
+              <span>
+                <span className="mr-2 rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+                  {ACTION_TAGS[entry.action] ?? entry.action}
+                </span>
+                <span className="text-white">{entry.summary}</span>
+              </span>
+              <span className="text-[11px] text-[var(--text-muted)]">
+                {new Date(entry.createdAt).toLocaleString()}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  )
+}
 
 const STAT_FIELDS = [
   { key: 'gamesPlayed', label: 'GP', column: 'games_played' },
@@ -686,6 +760,8 @@ export default function CommissionerTools() {
   return (
     <div className="space-y-6">
       <PageHeader title="Commissioner Tools" description="Season control and league administration." />
+
+      <TransactionAlertsCard />
 
       <UndoLastActionCard />
 

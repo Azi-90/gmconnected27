@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from './lib/AuthContext'
 import { useLeagueData } from './lib/LeagueDataContext'
+import { useTransactionsLog } from './lib/useTransactionsLog'
 
 const NAV_LINKS = [
   { to: '/', label: 'Home' },
@@ -12,6 +13,27 @@ const NAV_LINKS = [
   { to: '/news', label: 'News' },
   { to: '/guide', label: 'Guide' },
 ]
+
+function AlertBell() {
+  const { unreadCount } = useTransactionsLog()
+  return (
+    <NavLink
+      to="/commissioner"
+      className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-white"
+      aria-label={`Transaction alerts${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4.5 w-4.5">
+        <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      {unreadCount > 0 && (
+        <span className="absolute -right-1 -top-1 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[var(--negative)] px-1 text-[10px] font-bold text-white">
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </span>
+      )}
+    </NavLink>
+  )
+}
 
 function AuthButton() {
   const { user, profile, loading, signInWithDiscord, signOut } = useAuth()
@@ -46,6 +68,7 @@ function AuthButton() {
           </span>
         )}
       </div>
+      {profile?.is_commissioner && <AlertBell />}
       <button
         type="button"
         onClick={signOut}
