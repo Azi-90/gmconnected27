@@ -331,21 +331,37 @@ export default function Guide() {
           <section id="free-agency" className="scroll-mt-24 space-y-3">
             <SectionHead n="06" title="Free Agency" tag="all" />
             <p className="max-w-2xl text-[14px] text-[var(--text-muted)]">
-              Bid on unsigned players with a real offer — term, AAV, and signing bonus — not just a claim button.
+              Bidding is blind — you can't see what anyone else is offering, and the highest bid wins automatically
+              once bidding closes.
             </p>
             <Card className="p-5">
               <h3 className="mb-2 text-[13px] font-bold text-white">Placing a bid</h3>
               <p className="text-[13.5px] text-[var(--text-muted)]">
-                Open Free Agency, pick a player, and submit AAV, term, and signing bonus. The player's last team and cap
-                hit are shown so you know what you're bidding against.
+                Open Free Agency, pick a player, and submit AAV, term, and signing bonus. Every team's offer stays
+                hidden from everyone else while it's still pending — you won't see other teams' numbers, and they
+                won't see yours.
+              </p>
+            </Card>
+            <Card className="p-5">
+              <h3 className="mb-2 text-[13px] font-bold text-white">Nightly resolution at midnight EST</h3>
+              <p className="text-[13.5px] text-[var(--text-muted)]">
+                Every night at 12:00 AM EST, every free agent's live bids get ranked and the highest AAV becomes the{' '}
+                <span className="font-mono">leading</span> offer — everyone else on that player is marked{' '}
+                <span className="font-mono">outbid</span>. Once an offer is resolved this way, its amount becomes
+                visible to everyone, so you'll see how close you came after the fact even if you lost.
+              </p>
+              <p className="mt-2 text-[13.5px] text-[var(--text-muted)]">
+                The leading bid doesn't sign the player automatically — the commissioner still has to click{' '}
+                <b className="text-white">Award</b> to actually finalize it, same as every other transaction in the
+                app. It's the highest AAV that wins, barring the commissioner stepping in.
               </p>
             </Card>
             <Card className="p-5">
               <h3 className="mb-2 text-[13px] font-bold text-white">Restricted free agents</h3>
               <p className="text-[13.5px] text-[var(--text-muted)]">
-                RFAs are flagged with a banner. Outside offers can be submitted and seen by everyone, but they can't be{' '}
-                <b className="text-white">awarded</b> until the player's original team explicitly waives its right of
-                first refusal.
+                RFAs are flagged with a banner. Outside offers can still be submitted and can still become the
+                nightly leading bid, but they can't be <b className="text-white">awarded</b> until the player's
+                original team explicitly waives its right of first refusal.
               </p>
             </Card>
           </section>
