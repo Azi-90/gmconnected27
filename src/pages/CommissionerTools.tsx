@@ -425,6 +425,228 @@ function PlayerProgressionCard() {
   )
 }
 
+function RosterOverallsCard() {
+  const { teams, playersByTeam, refresh } = useLeagueData()
+  const [teamId, setTeamId] = useState(teams[0]?.id ?? '')
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
+
+  const roster = teamId ? playersByTeam(teamId) : []
+
+  const draftFor = (p: { id: string; overall: number | null }) =>
+    drafts[p.id] ?? (p.overall != null ? String(p.overall) : '')
+
+  const save = async () => {
+    const changed = roster.filter((p) => drafts[p.id] !== undefined && drafts[p.id] !== draftFor(p))
+    if (changed.length === 0) return
+    setSaving(true)
+    const results = await Promise.all(
+      changed.map((p) => {
+        const raw = drafts[p.id].trim()
+        const overall = raw === '' ? null : parseInt(raw, 10)
+        return supabase.from('players').update({ overall }).eq('id', p.id)
+      }),
+    )
+    setSaving(false)
+    const failed = results.filter((r) => r.error)
+    setResult(
+      failed.length > 0
+        ? `${failed.length} of ${changed.length} update(s) failed: ${failed[0].error?.message}`
+        : `Saved ${changed.length} overall${changed.length === 1 ? '' : 's'}.`,
+    )
+    setDrafts({})
+    await refresh()
+  }
+
+  return (
+    <Card className="p-5">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Roster Data</p>
+      <h2 className="mt-1 text-xl font-extrabold text-white">Edit Overalls</h2>
+      <p className="mt-2 text-[13px] text-[var(--text-muted)]">
+        Fix an overall directly instead of asking for it to be patched — pick a team, edit any OVR, save. Leave a
+        box blank to clear it back to unrated.
+      </p>
+      <div className="mt-4">
+        <select
+          value={teamId}
+          onChange={(e) => {
+            setTeamId(e.target.value)
+            setDrafts({})
+            setResult(null)
+          }}
+          className="rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[13px] text-white"
+        >
+          {teams.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.city} {t.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      {roster.length > 0 && (
+        <Card className="mt-4 max-h-[400px] overflow-auto">
+          <table className="w-full text-left text-[13px]">
+            <thead className="sticky top-0 z-10 bg-[var(--bg-panel)]">
+              <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-wide text-[var(--text-muted)]">
+                <th className="px-3 py-2">Player</th>
+                <th className="px-3 py-2">Pos</th>
+                <th className="px-3 py-2">OVR</th>
+              </tr>
+            </thead>
+            <tbody>
+              {roster.map((p) => (
+                <tr key={p.id} className="border-b border-[var(--border)]/60 last:border-0">
+                  <td className="px-3 py-1.5 font-semibold text-white">{p.name}</td>
+                  <td className="px-3 py-1.5 text-[var(--text-muted)]">{p.position}</td>
+                  <td className="px-3 py-1.5">
+                    <input
+                      value={draftFor(p)}
+                      onChange={(e) => setDrafts((d) => ({ ...d, [p.id]: e.target.value }))}
+                      className="w-16 rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-white"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+      <Button className="mt-3" onClick={save} disabled={saving || roster.length === 0}>
+        {saving ? 'Saving…' : 'Save Overalls'}
+      </Button>
+      {result && <p className="mt-3 text-[13px] text-[var(--positive)]">{result}</p>}
+    </Card>
+  )
+}
+
+const NEW_PLAYER_POSITIONS = ['C', 'LW', 'RW', 'D', 'G'] as const
+const NEW_PLAYER_STATUSES = ['UFA', 'RFA', 'RFA (ARB)', 'UFA (No QO)'] as const
+
+const EMPTY_NEW_PLAYER = {
+  teamId: '',
+  name: '',
+  overall: '',
+  number: '',
+  position: 'C' as (typeof NEW_PLAYER_POSITIONS)[number],
+  shoots: 'L',
+  height: '',
+  weight: '',
+  born: '',
+  birthplace: '',
+  contractType: 'Standard Contract',
+  capHit: '',
+  termYears: '1',
+  expiryYear: '',
+  status: 'UFA' as (typeof NEW_PLAYER_STATUSES)[number],
+}
+
+function AddPlayerCard() {
+  const { teams, refresh } = useLeagueData()
+  const [draft, setDraft] = useState(EMPTY_NEW_PLAYER)
+  const [saving, setSaving] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
+
+  const set = (key: keyof typeof EMPTY_NEW_PLAYER, value: string) => setDraft((d) => ({ ...d, [key]: value }))
+
+  const inputClass =
+    'rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[13px] text-white placeholder:text-[var(--text-muted)]'
+
+  const submit = async () => {
+    if (!draft.teamId || !draft.name.trim() || !draft.capHit || !draft.expiryYear.trim()) {
+      setResult('Team, name, cap hit, and expiry year are required.')
+      return
+    }
+    setSaving(true)
+    const capHit = Math.round(Number(draft.capHit))
+    const termYears = Math.max(1, Number(draft.termYears) || 1)
+    const id = 'added-' + crypto.randomUUID().replace(/-/g, '')
+    const { error } = await supabase.from('players').insert({
+      id,
+      team_id: draft.teamId,
+      name: draft.name.trim(),
+      number: Number(draft.number) || 0,
+      position: draft.position,
+      shoots: draft.shoots,
+      height: draft.height.trim() || '—',
+      weight: Number(draft.weight) || 0,
+      born: draft.born.trim() || '—',
+      birthplace: draft.birthplace.trim() || '—',
+      contract_type: draft.contractType.trim() || 'Standard Contract',
+      cap_hit: capHit,
+      salary: capHit,
+      signing_bonus: 0,
+      total_value: capHit * termYears,
+      term_years: termYears,
+      expiry_year: draft.expiryYear.trim(),
+      status: draft.status,
+      overall: draft.overall.trim() === '' ? null : Number(draft.overall),
+    })
+    setSaving(false)
+    if (error) {
+      setResult(`Failed: ${error.message}`)
+      return
+    }
+    setResult(`${draft.name} added to ${draft.teamId}.`)
+    setDraft({ ...EMPTY_NEW_PLAYER, teamId: draft.teamId })
+    await refresh()
+  }
+
+  return (
+    <Card className="p-5">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Roster Data</p>
+      <h2 className="mt-1 text-xl font-extrabold text-white">Add a Player Missing From the Site</h2>
+      <p className="mt-2 text-[13px] text-[var(--text-muted)]">
+        For a real player who isn't on their team's roster here at all. Team, name, cap hit, and expiry are
+        required — everything else defaults sensibly and can be fixed later.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-4">
+        <select value={draft.teamId} onChange={(e) => set('teamId', e.target.value)} className={inputClass}>
+          <option value="">Team…</option>
+          {teams.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.id} — {t.city} {t.name}
+            </option>
+          ))}
+        </select>
+        <input placeholder="Name" value={draft.name} onChange={(e) => set('name', e.target.value)} className={inputClass} />
+        <select value={draft.position} onChange={(e) => set('position', e.target.value)} className={inputClass}>
+          {NEW_PLAYER_POSITIONS.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+        <input placeholder="Overall" value={draft.overall} onChange={(e) => set('overall', e.target.value)} className={inputClass} />
+        <input placeholder="#" value={draft.number} onChange={(e) => set('number', e.target.value)} className={inputClass} />
+        <select value={draft.shoots} onChange={(e) => set('shoots', e.target.value)} className={inputClass}>
+          <option value="L">L</option>
+          <option value="R">R</option>
+        </select>
+        <input placeholder={`Height (e.g. 6'1")`} value={draft.height} onChange={(e) => set('height', e.target.value)} className={inputClass} />
+        <input placeholder="Weight (lbs)" value={draft.weight} onChange={(e) => set('weight', e.target.value)} className={inputClass} />
+        <input placeholder="Born (e.g. January 1, 2000)" value={draft.born} onChange={(e) => set('born', e.target.value)} className={inputClass} />
+        <input placeholder="Birthplace" value={draft.birthplace} onChange={(e) => set('birthplace', e.target.value)} className={inputClass} />
+        <input placeholder="Contract type" value={draft.contractType} onChange={(e) => set('contractType', e.target.value)} className={inputClass} />
+        <input placeholder="Cap hit ($)" value={draft.capHit} onChange={(e) => set('capHit', e.target.value)} className={inputClass} />
+        <input placeholder="Term (years)" value={draft.termYears} onChange={(e) => set('termYears', e.target.value)} className={inputClass} />
+        <input placeholder="Expiry (e.g. 2026-27)" value={draft.expiryYear} onChange={(e) => set('expiryYear', e.target.value)} className={inputClass} />
+        <select value={draft.status} onChange={(e) => set('status', e.target.value)} className={inputClass}>
+          {NEW_PLAYER_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      </div>
+      <Button className="mt-3" onClick={submit} disabled={saving}>
+        {saving ? 'Adding…' : 'Add Player'}
+      </Button>
+      {result && <p className="mt-3 text-[13px] text-[var(--positive)]">{result}</p>}
+    </Card>
+  )
+}
+
 interface GmRow {
   id: string
   discordUsername: string | null
@@ -874,6 +1096,10 @@ export default function CommissionerTools() {
       <ResolveFreeAgencyCard />
 
       <PlayerProgressionCard />
+
+      <RosterOverallsCard />
+
+      <AddPlayerCard />
 
       <TradeDeadlineCard />
 
