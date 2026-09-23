@@ -434,11 +434,11 @@ function RosterOverallsCard() {
 
   const roster = teamId ? playersByTeam(teamId) : []
 
-  const draftFor = (p: { id: string; overall: number | null }) =>
-    drafts[p.id] ?? (p.overall != null ? String(p.overall) : '')
+  const originalFor = (p: { overall: number | null }) => (p.overall != null ? String(p.overall) : '')
+  const draftFor = (p: { id: string; overall: number | null }) => drafts[p.id] ?? originalFor(p)
 
   const save = async () => {
-    const changed = roster.filter((p) => drafts[p.id] !== undefined && drafts[p.id] !== draftFor(p))
+    const changed = roster.filter((p) => drafts[p.id] !== undefined && drafts[p.id] !== originalFor(p))
     if (changed.length === 0) return
     setSaving(true)
     const results = await Promise.all(
