@@ -431,7 +431,11 @@ export default function Guide() {
               <p className="mt-3 text-[13.5px] text-[var(--text-muted)]">
                 An accepted offer is an <b className="text-white">extension</b>, not a rewrite — it doesn't touch
                 their current deal. It kicks in the season after their existing contract expires, and shows up as an
-                "Ext." badge on the roster and cap sheet in the meantime.
+                "Ext." badge on the roster and cap sheet in the meantime. The one exception is a player with no real
+                current contract (shown as $0 — an unsigned RFA who was never given a deal): their offer isn't an
+                extension of anything, so it applies immediately instead of waiting a season. For those players,
+                "expected value" is estimated from their overall rating instead of their (nonexistent) cap hit, so
+                the offer still has to be realistic.
               </p>
               <p className="mt-3 text-[13.5px] text-[var(--text-muted)]">
                 The player accepting isn't the final step — every accepted offer still needs the{' '}
