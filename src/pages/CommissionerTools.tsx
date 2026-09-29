@@ -115,6 +115,7 @@ const ACTION_TAGS: Record<string, string> = {
   free_agent_award: 'Free Agency',
   re_sign: 'Re-Sign',
   drop_player: 'Drop',
+  move_player: 'Move',
 }
 
 function TransactionAlertsCard() {
@@ -647,6 +648,82 @@ function AddPlayerCard() {
   )
 }
 
+function MovePlayerCard() {
+  const { teams, players, refresh } = useLeagueData()
+  const [playerId, setPlayerId] = useState('')
+  const [newTeamId, setNewTeamId] = useState('')
+  const [moving, setMoving] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
+
+  const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name))
+  const selectedPlayer = players.find((p) => p.id === playerId)
+
+  const move = async () => {
+    if (!playerId || !newTeamId) return
+    setMoving(true)
+    const { error } = await supabase.rpc('commissioner_move_player', {
+      p_player_id: playerId,
+      p_new_team_id: newTeamId,
+    })
+    setMoving(false)
+    if (error) {
+      setResult(`Failed: ${error.message}`)
+      return
+    }
+    setResult(`${selectedPlayer?.name} moved to ${newTeamId}.`)
+    setPlayerId('')
+    setNewTeamId('')
+    await refresh()
+  }
+
+  return (
+    <Card className="p-5">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Roster Data</p>
+      <h2 className="mt-1 text-xl font-extrabold text-white">Move a Player</h2>
+      <p className="mt-2 text-[13px] text-[var(--text-muted)]">
+        Directly moves a player to another team — no trade proposal or approval from either GM needed. For
+        league-admin corrections, not a substitute for a real trade between GMs.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <select
+          value={playerId}
+          onChange={(e) => {
+            setPlayerId(e.target.value)
+            setNewTeamId('')
+          }}
+          className="rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[13px] text-white"
+        >
+          <option value="">Player…</option>
+          {sortedPlayers.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name} ({p.teamId})
+            </option>
+          ))}
+        </select>
+        <select
+          value={newTeamId}
+          onChange={(e) => setNewTeamId(e.target.value)}
+          disabled={!playerId}
+          className="rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[13px] text-white"
+        >
+          <option value="">Move to…</option>
+          {teams
+            .filter((t) => t.id !== selectedPlayer?.teamId)
+            .map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.id} — {t.city} {t.name}
+              </option>
+            ))}
+        </select>
+        <Button onClick={move} disabled={moving || !playerId || !newTeamId}>
+          {moving ? 'Moving…' : 'Move Player'}
+        </Button>
+      </div>
+      {result && <p className="mt-3 text-[13px] text-[var(--positive)]">{result}</p>}
+    </Card>
+  )
+}
+
 interface GmRow {
   id: string
   discordUsername: string | null
@@ -841,6 +918,7 @@ const ACTION_LABELS: Record<string, string> = {
   award_free_agent: 'a free-agent signing',
   apply_progression: 'a progression run',
   drop_player: 'a player drop',
+  move_player: 'a direct player move',
 }
 
 function UndoLastActionCard() {
@@ -1100,6 +1178,8 @@ export default function CommissionerTools() {
       <RosterOverallsCard />
 
       <AddPlayerCard />
+
+      <MovePlayerCard />
 
       <TradeDeadlineCard />
 
