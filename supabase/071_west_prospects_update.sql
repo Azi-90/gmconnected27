@@ -1,0 +1,67 @@
+-- Run this in Supabase Dashboard -> SQL Editor -> New query -> Run.
+-- Western Conference prospect pass (all 16 West teams), tier corrections
+-- and removals half -- the real new adds (several per team) are coming in
+-- a follow-up migration once their bios are verified via research.
+
+-- === Tier corrections ===
+update team_prospects set potential = 'Elite' where id = 'a139eafc-1b11-4c1d-802d-2bca5fb1fba1';  -- Caleb Desnoyers (UTA)
+update team_prospects set potential = 'Elite' where id = 'da9f2333-d285-41be-a15e-56b7ed19865a';  -- Tij Iginla (UTA)
+update team_prospects set potential = 'Top 6' where id = '4f4986ae-60ac-4b32-b16b-77d514752f35';  -- Colby Barlow (WPG)
+update team_prospects set potential = 'Top 6' where id = 'c404167a-c59f-4e5b-b7e6-8ca279e4b303';  -- Charlie Stramel (MIN)
+update team_prospects set potential = 'Top 6' where id = '3aaa7171-329b-4202-90e4-de021a900ae7';  -- Adam Benak (MIN)
+update team_prospects set potential = 'Top 6' where id = 'dd62ad1d-4d97-41fb-b974-1ddeaf190d29';  -- Emil Hemming (DAL)
+update team_prospects set potential = 'Top 6' where id = '5a00a7ed-fcf9-40a1-b0fa-e4e790e2a3aa';  -- Otto Stenberg (STL)
+update team_prospects set potential = 'Elite' where id = 'fc907250-5348-4ffa-a211-dab36a06204c';  -- Carson Carels (CGY)
+update team_prospects set potential = 'Elite' where id = '452317a9-6851-4009-a310-5205690e76db';  -- Cole Reschny (CGY)
+update team_prospects set potential = 'Top 4D' where id = '49c0e9c0-2bfa-4b97-9142-f37234a61a83'; -- Lukas Cormier (VGK)
+update team_prospects set potential = 'Elite' where id = '711f8bb7-4658-4e59-ba17-9acb8ea293ca';  -- Caleb Malhotra (VAN)
+update team_prospects set potential = 'Elite' where id = '3e8006ca-23f6-444a-bf70-fb397dffe3fb';  -- Chase Reid (SEA)
+update team_prospects set potential = 'Top 6' where id = 'fb74a811-eabc-4c1e-9a8d-90f72bb419f1';  -- Oscar Fisker Mølgaard (SEA)
+update team_prospects set potential = 'Top 6' where id = 'a9dc7406-290a-4f95-96f0-3902cbe88611';  -- Jagger Firkus (SEA)
+update team_prospects set potential = 'Elite' where id = 'f4e14f90-baab-4074-b508-8f3b0e957acf';  -- Keaton Verhoeff (SJS)
+update team_prospects set potential = 'Elite' where id = 'f4dd1723-f1ac-4c27-b64c-d36facbf783b';  -- Joshua Ravensbergen (SJS)
+update team_prospects set potential = 'Elite' where id = 'eb657125-f054-4603-895c-7831cc90da9b';  -- Quentin Musty (SJS)
+
+-- === Removals (graduated to the main roster, cut, or traded away) ===
+delete from team_prospects where id in (
+  '86ccbafa-1621-46a4-b511-9bff26e8d71f', -- Anton Frondell (CHI)
+  '43ad04a0-879a-4cd8-bd05-c507c8be0c18', -- Nick Lardis (CHI)
+  'de68b35b-777a-459a-96f1-4bdb1edacd67', -- Vaclav Nestrasil (CHI)
+  'd36d8b16-3e08-49bb-b715-009865f03aab', -- Adam Fraser (UTA)
+  '43122597-d385-4fc0-a986-e9a5053ef455', -- Axel Holm (UTA)
+  '27d28bd9-b3c3-4067-b552-39b9cbdc2cb5', -- Carter Ahonen (UTA)
+  'd9ac773f-7edc-4070-b3c0-bff2e80f2c76', -- Daniil But (UTA)
+  '3c6a79e4-4cd9-4903-ab73-618f1de2292b', -- Dylan Campbell (UTA)
+  '97b8a294-6d03-4aef-b54d-d37803ad6d2b', -- Mikael Orlov (UTA)
+  '2450b8c2-de2b-4d6e-aa32-5805b0a0d9d3', -- Nikita Chibrikov (WPG)
+  '5446fefd-177e-4ff3-a1e0-531727263232', -- Kieron Walton (WPG)
+  '3c876783-11f2-4011-bdaa-5685b6a9d178', -- David Spacek (MIN)
+  '6506958f-7728-4fe0-8854-561f6fcb9a35', -- Riley Heidt (MIN)
+  '61c95e43-8ea2-4dec-b827-19153275eb6a', -- Adam Andersson (MIN)
+  '9b878da8-6549-420d-a4e6-5aebaccbc5d5', -- Cameron Schmidt (DAL)
+  '267a0245-0e74-46ff-95be-21185dd33676', -- Tristan Bertucci (DAL)
+  'e7e6d5ec-b3ab-4c45-ab33-b3861bab1be0', -- Brandon Gorzynski (DAL)
+  '62f6440e-fb43-4310-81e5-d7dd64760f4a', -- Jakub Vanecek (DAL)
+  'f011fb74-883f-4348-9cf3-140fe978163d', -- Adam Jiricek (STL)
+  'c4cadccf-4c05-40c3-ab1b-19924f3a33ab', -- Brady Martin (NSH)
+  '10c7cd92-2c9a-4980-abae-56a62ce6b366', -- Ryker Lee (NSH)
+  '2169bd65-9f0b-4033-9f7c-b58a5a2655d9', -- Tobias Tvrznik (COL)
+  'ff8c7911-9335-4e93-88b1-10d3f4471b58', -- Beckett Hamilton (COL)
+  'aad78c91-efce-4eca-97f0-30440755617f', -- Ethan Wyttenbach (CGY)
+  '44e9fd2c-7157-4fec-8ba0-cc86c26ecf20', -- Tobias Trejbal (CGY)
+  'fac9de6a-996c-4b67-b798-6d8fa67cbe67', -- Matyas Sapovaliv (VGK)
+  '594e4402-5cb2-4c24-b266-c2a33e2dbb6b', -- Mathieu Cataford (VGK)
+  '28739c1a-92d5-453d-9100-17b099c9f273', -- Carl Lindbom (VGK)
+  'cba298ab-7db5-40b3-89fc-e809970571a0', -- Kirill Kudryavtsev (VAN)
+  '9b28ca20-a8f6-44fa-8cbb-5f352772f009', -- Jonathan Lekkerimäki (VAN) -- already NHL
+  '69d658ee-88d8-47d3-bece-cebc09c3b218', -- Casey Mutryn (SEA)
+  '8649e4bf-9214-47e3-97ee-5b85e54a97d6', -- Vojtech Čihař (LAK)
+  'b9dde7c8-7ac9-4372-907b-836741f822c3', -- Igor Chernyshov (SJS) -- already NHL
+  'b0cb4604-fb19-4330-82fc-88ec3de52167', -- Connor Ungar (EDM)
+  'af03b3ce-19f4-46b6-9129-788129c54fb1', -- Rudolfs Bērzkalns (EDM)
+  '41b8d078-97c2-4834-9a94-713c6b040c8d', -- Samuel Jonsson (EDM)
+  '78ea8413-58e0-4d97-a78a-d4a0fe1bccd1', -- Tommy Lafrenière (EDM)
+  '36eef537-9094-40b1-aae0-3b8bc1cf24b7', -- William Nicholl (EDM)
+  '602b35ba-174c-4361-b2e0-40b4f9cb6525', -- Lucas Pettersson (ANA)
+  '8e5b6ec6-a104-419e-af8e-c542b3ae50b0'  -- Herman Träff (ANA)
+);
