@@ -6,7 +6,7 @@ import { useTrades } from '../lib/useTrades'
 import { triggerNewsGeneration } from '../lib/newsTrigger'
 import { supabase } from '../lib/supabase'
 import { formatMoney } from '../lib/format'
-import type { Trade, TradeAsset, DraftPick } from '../types'
+import type { Trade, TradeAsset, DraftPick, Player, Team } from '../types'
 import { Card, PageHeader, TeamBadge, Button } from '../components/ui'
 
 function assetLabel(asset: TradeAsset): string {
@@ -257,6 +257,159 @@ function ProposeTradeForm({
   )
 }
 
+function resolvedPlayers(assets: TradeAsset[], playersById: Map<string, Player>): Player[] {
+  return assets.flatMap((a) => {
+    if (a.type !== 'player') return []
+    const player = playersById.get(a.playerId)
+    return player ? [player] : []
+  })
+}
+
+function SideDetail({
+  title,
+  assets,
+  sendingTeamId,
+  checkOwnership,
+  playersById,
+}: {
+  title: string
+  assets: TradeAsset[]
+  sendingTeamId: string
+  checkOwnership: boolean
+  playersById: Map<string, Player>
+}) {
+  const found = resolvedPlayers(assets, playersById)
+  const totalCap = found.reduce((sum, p) => sum + p.capHit, 0)
+  const rated = found.filter((p) => p.overall != null)
+  const avgOvr = rated.length
+    ? Math.round(rated.reduce((sum, p) => sum + (p.overall as number), 0) / rated.length)
+    : null
+
+  return (
+    <div className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-3">
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">{title}</p>
+      {assets.length === 0 ? (
+        <p className="text-[12px] text-[var(--text-muted)]">Nothing.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-[12px]">
+            <thead>
+              <tr className="border-b border-[var(--border)] text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
+                <th className="py-1 pr-3">Asset</th>
+                <th className="py-1 pr-3">Pos</th>
+                <th className="py-1 pr-3">Age</th>
+                <th className="py-1 pr-3">OVR</th>
+                <th className="py-1 pr-3">Cap Hit</th>
+                <th className="py-1 pr-3">Term</th>
+                <th className="py-1">Expiry</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assets.map((a, i) => {
+                if (a.type === 'pick') {
+                  return (
+                    <tr key={`pick-${a.pickId}-${i}`} className="border-b border-[var(--border)]/60 last:border-0">
+                      <td className="py-1.5 pr-3 font-semibold text-white" colSpan={7}>
+                        {a.label}
+                      </td>
+                    </tr>
+                  )
+                }
+                const p = playersById.get(a.playerId)
+                if (!p) {
+                  return (
+                    <tr key={`gone-${a.playerId}`} className="border-b border-[var(--border)]/60 last:border-0">
+                      <td className="py-1.5 pr-3 font-semibold text-white">{a.playerName}</td>
+                      <td className="py-1.5 text-red-300" colSpan={6}>
+                        No longer on any roster
+                      </td>
+                    </tr>
+                  )
+                }
+                const stale = checkOwnership && p.teamId !== sendingTeamId
+                return (
+                  <tr key={p.id} className="border-b border-[var(--border)]/60 last:border-0 align-top">
+                    <td className="py-1.5 pr-3 font-semibold text-white">
+                      {p.name}
+                      {stale && (
+                        <span className="ml-1.5 rounded border border-red-500/30 bg-red-500/15 px-1 py-0.5 text-[9px] font-bold uppercase text-red-300">
+                          Now on {p.teamId}
+                        </span>
+                      )}
+                      {p.pendingExtension && (
+                        <div className="text-[10px] font-normal text-emerald-300">
+                          Ext. {p.pendingExtension.effectiveSeason}: {formatMoney(p.pendingExtension.newCapHit)} ×{' '}
+                          {p.pendingExtension.newTermYears}yr
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-1.5 pr-3 text-[var(--text-muted)]">{p.position}</td>
+                    <td className="py-1.5 pr-3 text-[var(--text-muted)]">{playerAge(p.born) ?? '—'}</td>
+                    <td className="py-1.5 pr-3 font-semibold text-white">{p.overall ?? '—'}</td>
+                    <td className="py-1.5 pr-3 text-white">{formatMoney(p.capHit)}</td>
+                    <td className="py-1.5 pr-3 text-[var(--text-muted)]">{p.termYears}yr</td>
+                    <td className="py-1.5 text-[var(--text-muted)]">
+                      {p.expiryYear} {p.status}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            {found.length > 0 && (
+              <tfoot>
+                <tr className="border-t border-[var(--border)] text-[11px] font-bold text-white">
+                  <td className="py-1.5 pr-3">Total ({found.length})</td>
+                  <td className="py-1.5 pr-3" />
+                  <td className="py-1.5 pr-3" />
+                  <td className="py-1.5 pr-3">{avgOvr != null ? `${avgOvr} avg` : '—'}</td>
+                  <td className="py-1.5 pr-3">{formatMoney(totalCap)}</td>
+                  <td className="py-1.5 pr-3" />
+                  <td className="py-1.5" />
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CapImpact({
+  team,
+  capAfter,
+  rosterAfter,
+  salaryCap,
+}: {
+  team: Team
+  capAfter: number
+  rosterAfter: number
+  salaryCap: number
+}) {
+  const over = capAfter > salaryCap
+  return (
+    <div
+      className={`rounded-md border px-3 py-2 text-[12px] ${
+        over ? 'border-red-500/40 bg-red-500/10' : 'border-[var(--border)] bg-[var(--bg)]'
+      }`}
+    >
+      <p className="font-bold text-white">{team.abbr} after the trade</p>
+      <p className="mt-0.5 text-[var(--text-muted)]">
+        Cap used {formatMoney(team.capUsed)} → <span className="font-semibold text-white">{formatMoney(capAfter)}</span>
+        {' · '}
+        {over ? (
+          <span className="font-semibold text-red-300">Over the cap by {formatMoney(capAfter - salaryCap)}</span>
+        ) : (
+          <span>{formatMoney(salaryCap - capAfter)} space</span>
+        )}
+      </p>
+      <p className="text-[var(--text-muted)]">
+        Roster {team.playerCount} → <span className="font-semibold text-white">{rosterAfter}</span>
+      </p>
+    </div>
+  )
+}
+
 function TradeRow({
   trade,
   myTeamId,
@@ -270,10 +423,17 @@ function TradeRow({
   onDecide: (id: string, status: 'gm_approved' | 'approved' | 'rejected') => void
   onRetract: (id: string) => void
 }) {
-  const { teamsById } = useLeagueData()
+  const { teamsById, players, salaryCap } = useLeagueData()
+  const playersById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players])
   const fromTeam = teamsById.get(trade.fromTeamId)
   const toTeam = teamsById.get(trade.toTeamId)
   if (!fromTeam || !toTeam) return null
+
+  const isActive = trade.status === 'pending' || trade.status === 'gm_approved'
+  const fromSent = resolvedPlayers(trade.assetsFromTeam, playersById)
+  const toSent = resolvedPlayers(trade.assetsToTeam, playersById)
+  const fromSentCap = fromSent.reduce((sum, p) => sum + p.capHit, 0)
+  const toSentCap = toSent.reduce((sum, p) => sum + p.capHit, 0)
 
   const isReceivingGm = myTeamId === trade.toTeamId
   const gmCanDecide = trade.status === 'pending' && (isCommissioner || isReceivingGm)
@@ -324,6 +484,43 @@ function TradeRow({
         </span>
       </div>
       {trade.note && <p className="mt-2 text-[13px] text-[var(--text-muted)]">{trade.note}</p>}
+      <details className="mt-3" open={isActive}>
+        <summary className="cursor-pointer text-[12px] font-semibold text-[var(--text-muted)] hover:text-white">
+          Deal details
+        </summary>
+        <div className="mt-2 grid gap-3 lg:grid-cols-2">
+          <SideDetail
+            title={`${fromTeam.abbr} sends`}
+            assets={trade.assetsFromTeam}
+            sendingTeamId={trade.fromTeamId}
+            checkOwnership={isActive}
+            playersById={playersById}
+          />
+          <SideDetail
+            title={`${toTeam.abbr} sends`}
+            assets={trade.assetsToTeam}
+            sendingTeamId={trade.toTeamId}
+            checkOwnership={isActive}
+            playersById={playersById}
+          />
+        </div>
+        {isActive && (
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+            <CapImpact
+              team={fromTeam}
+              capAfter={fromTeam.capUsed - fromSentCap + toSentCap}
+              rosterAfter={fromTeam.playerCount - fromSent.length + toSent.length}
+              salaryCap={salaryCap}
+            />
+            <CapImpact
+              team={toTeam}
+              capAfter={toTeam.capUsed - toSentCap + fromSentCap}
+              rosterAfter={toTeam.playerCount - toSent.length + fromSent.length}
+              salaryCap={salaryCap}
+            />
+          </div>
+        )}
+      </details>
       {waitingOnCommissioner && (
         <p className="mt-3 text-[13px] text-[var(--text-muted)]">
           The receiving GM has signed off — waiting on the commissioner for final approval.
